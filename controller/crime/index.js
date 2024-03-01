@@ -209,7 +209,7 @@ router.get("/countCases", (req, res) => {
             SUM(oc.count_per_barangay) OVER (PARTITION BY oc.barangay) as total_cases
         FROM OffenseCounts oc
         ORDER BY total_cases DESC, oc.barangay, oc.offense`
-        
+
 
         db.query(sql, (err, rows) => {
             if (err) {
@@ -326,12 +326,12 @@ router.get("/reportedCrime", (req, res) => {
     ]
     try {
         let sql = "";
-        if(!q){
+        if (!q) {
             sql = "SELECT crime_reported.*, user.first_name, user.last_name FROM crime_reported INNER JOIN user ON user.id = crime_reported.officer_id WHERE validated = ? ORDER BY crime_reported.created_at desc";
-        
-        }else{
+
+        } else {
             sql = "SELECT crime_reported.*, user.first_name, user.last_name FROM crime_reported INNER JOIN user ON user.id = crime_reported.officer_id WHERE validated = ? AND offense LIKE ? OR  validated = ? AND barangay LIKE ?  ORDER BY crime_reported.created_at desc";
-        
+
         }
         db.query(sql, credentials, (err, rows) => {
             if (err) {
@@ -363,7 +363,7 @@ router.get("/countCasesPerBrgy", (req, res) => {
         FROM crime_reported 
         GROUP BY barangay
         ORDER BY total_cases DESC, barangay`
-        
+
 
         db.query(sql, (err, rows) => {
             if (err) {
@@ -378,6 +378,211 @@ router.get("/countCasesPerBrgy", (req, res) => {
                 message: `Successfully retrieved ${rows.length} record/s`,
                 data: rows,
             });
+        });
+    } catch (error) {
+        console.log(`Server error controller/crime/get: ${error}`);
+        res.status(500).json({
+            status: 500,
+            message: `Internal Server Error, ${error}`,
+        });
+    }
+})
+
+router.get("/all", (req, res) => {
+
+    const page = parseInt(req.query.page) || 1; // default page is 1
+    const limit = parseInt(req.query.limit) || 10; // default limit is 10
+    const q = req.query.q || null;
+    const offense = req.query.offense || 'CLEAR';
+    const barangay = req.query.barangay || 'CLEAR';
+    const year = req.query.year || 'CLEAR';
+
+    try {
+        const offset = (page - 1) * limit;
+        // sql = "SELECT barangay, COUNT(*) as total_cases FROM crime_reported WHERE validated = 1 GROUP BY barangay ORDER BY total_cases DESC";
+        let sql = `SELECT COUNT(*) as totalCount FROM crime_reported WHERE validated = 1`
+        const params1 = [];
+        
+        if (offense !== 'CLEAR') {
+            sql += ' AND offense = ?'
+            params1.push(offense)
+        }
+        if (barangay !== 'CLEAR') {
+            sql += ' AND barangay = ?'
+            params1.push(barangay)
+        }
+        if (year !== 'CLEAR') {
+            sql += ' AND YEAR(date_committed) = ?'
+            params1.push(year)
+        }
+        
+
+        db.query(sql, params1, (err, countResult) => {
+            if (err) {
+                console.log(`Server error controller/crime/get: ${err}`);
+                return res.status(500).json({
+                    status: 500,
+                    message: `Internal Server Error, ${err}`,
+                });
+            }
+
+            const totalCount = countResult[0].totalCount
+
+            const params2 = [];
+
+            sql = `SELECT * FROM crime_reported WHERE validated = 1`
+            
+            if (offense !== 'CLEAR') {
+                sql += ' AND offense = ?'
+                params2.push(offense)
+            }
+            if (barangay !== 'CLEAR') {
+                sql += ' AND barangay = ?'
+                params2.push(barangay)
+            }
+            if (year !== 'CLEAR') {
+                sql += ' AND YEAR(date_committed) = ?'
+                params2.push(year)
+            }
+
+            sql += " ORDER BY id DESC LIMIT ? OFFSET ?"
+            params2.push(limit, offset);
+
+            db.query(sql, params2, (err, rows) => {
+                if (err) {
+                    console.log(`Server error controller/farm/list/get data: ${err}`);
+                    return res.status(500).json({
+                        status: 500,
+                        message: `Internal Server Error, ${err}`,
+                    });
+                }
+
+                return res.status(200).json({
+                    status: 200,
+                    message: `Successfully retrieved ${rows.length} record/s`,
+                    data: rows,
+                    totalCount: totalCount // Include total count in the response
+                });
+            })
+
+
+        });
+    } catch (error) {
+        console.log(`Server error controller/crime/get: ${error}`);
+        res.status(500).json({
+            status: 500,
+            message: `Internal Server Error, ${error}`,
+        });
+    }
+})
+
+router.get("/index", (req, res) => {
+
+    const page = parseInt(req.query.page) || 1; // default page is 1
+    const limit = parseInt(req.query.limit) || 10; // default limit is 10
+    const isIndex = req.query.isIndex;
+    const q = req.query.q || null;
+    const offense = req.query.offense || 'CLEAR';
+    const barangay = req.query.barangay || 'CLEAR';
+    const year = req.query.year || 'CLEAR';
+
+    try {
+        const offset = (page - 1) * limit;
+        // sql = "SELECT barangay, COUNT(*) as total_cases FROM crime_reported WHERE validated = 1 GROUP BY barangay ORDER BY total_cases DESC";
+        let sql = ""
+        
+        if(isIndex == 'true'){
+            sql = `SELECT COUNT(*) as totalCount
+            FROM crime_reported
+            WHERE validated = 1
+              AND (offense LIKE '%Murder%' 
+               OR offense LIKE '%Homicide%' 
+               OR offense LIKE '%Physical Injury%' 
+               OR offense LIKE '%Rape%' 
+               OR offense LIKE '%Robbery%' 
+               OR offense LIKE '%Theft%' 
+               OR offense LIKE '%Carnapping%')`
+        }else{
+            sql = `SELECT COUNT(*) as totalCount
+            FROM crime_reported
+            WHERE validated = 1
+              AND (offense NOT LIKE '%Murder%' 
+               AND offense NOT LIKE '%Homicide%' 
+               AND offense NOT LIKE '%Physical Injury%' 
+               AND offense NOT LIKE '%Rape%' 
+               AND offense NOT LIKE '%Robbery%' 
+               AND offense NOT LIKE '%Theft%' 
+               AND offense NOT LIKE '%Carnapping%')`
+        }
+
+        const params1 = [];
+        
+
+        db.query(sql, params1, (err, countResult) => {
+            if (err) {
+                console.log(`Server error controller/crime/get: ${err}`);
+                return res.status(500).json({
+                    status: 500,
+                    message: `Internal Server Error, ${err}`,
+                });
+            }
+
+            const totalCount = countResult[0].totalCount
+            console.log(totalCount)
+
+            const params2 = [];
+
+            if(isIndex == true){
+                sql = `SELECT *
+                FROM crime_reported
+                WHERE validated = 1
+                  AND (offense LIKE '%Murder%' 
+                   OR offense LIKE '%Homicide%' 
+                   OR offense LIKE '%Physical Injury%' 
+                   OR offense LIKE '%Rape%' 
+                   OR offense LIKE '%Robbery%' 
+                   OR offense LIKE '%Theft%' 
+                   OR offense LIKE '%Carnapping%')`
+            }else{
+                sql = `SELECT *
+                FROM crime_reported
+                WHERE validated = 1
+                  AND (offense NOT LIKE '%Murder%' 
+                   AND offense NOT LIKE '%Homicide%' 
+                   AND offense NOT LIKE '%Physical Injury%' 
+                   AND offense NOT LIKE '%Rape%' 
+                   AND offense NOT LIKE '%Robbery%' 
+                   AND offense NOT LIKE '%Theft%' 
+                   AND offense NOT LIKE '%Carnapping%')`
+            }
+
+            sql += " ORDER BY id DESC LIMIT ? OFFSET ?"
+            params2.push(limit, offset);
+
+            db.query(sql, params2, (err, rows) => {
+                if (err) {
+                    console.log(`Server error controller/farm/list/get data: ${err}`);
+                    return res.status(500).json({
+                        status: 500,
+                        message: `Internal Server Error, ${err}`,
+                    });
+                }
+
+                // return res.status(200).json({
+                //     status: 200,
+                //     message: `Successfully retrieved ${rows.length} record/s`,
+                //     data: rows,
+                //     totalCount: totalCount // Include total count in the response
+                // });
+                return res.status(200).json({
+                    status: 200,
+                    message: `Successfully retrieved ${rows.length} record/s`,
+                    data: rows,
+                    totalCount: totalCount
+                });
+            })
+
+
         });
     } catch (error) {
         console.log(`Server error controller/crime/get: ${error}`);
