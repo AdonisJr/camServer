@@ -528,11 +528,10 @@ router.get("/index", (req, res) => {
             }
 
             const totalCount = countResult[0].totalCount
-            console.log(totalCount)
 
             const params2 = [];
 
-            if(isIndex == true){
+            if(isIndex == 'true'){
                 sql = `SELECT *
                 FROM crime_reported
                 WHERE validated = 1
