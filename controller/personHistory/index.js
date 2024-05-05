@@ -38,9 +38,9 @@ router
         const officer_id = req.query.officer_id;
         const type = req.query.type;
         try {
-            sql = `SELECT * FROM person_history 
+            sql = `SELECT person_history.person_id, person_history.officer_id, person_history.type, person_of_concern.* FROM person_history 
             INNER JOIN person_of_concern ON person_history.person_id = person_of_concern.id 
-            WHERE person_history.officer_id = ? AND person_history.type = ?
+            WHERE person_history.officer_id = ? AND person_history.type = ? ORDER BY person_of_concern.created_at DESC, person_of_concern.updated_at DESC
             `;
 
             db.query(sql, [officer_id, type], (err, rows) => {

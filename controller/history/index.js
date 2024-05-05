@@ -45,7 +45,7 @@ router
         // const formattedDate = currentDate.toISOString().slice(0, 10);
         const officer_id = req.query.officer_id;
         try {
-            sql = "SELECT * FROM history INNER JOIN crime_reported ON history.crime_id = crime_reported.id INNER JOIN user ON history.officer_id = user.id WHERE history.officer_id = ?";
+            sql = "SELECT history.id, crime_reported.* FROM history INNER JOIN crime_reported ON history.crime_id = crime_reported.id INNER JOIN user ON history.officer_id = user.id WHERE history.officer_id = ?";
 
             db.query(sql, officer_id, (err, rows) => {
                 if (err) {
@@ -120,7 +120,6 @@ router.post('/wanted', findWanted, (req, res) => {
         officer_id,
         type
     ];
-
 
     const sql = `INSERT INTO history (crime_id, officer_id, type) 
     values (?, ?, ?)`;
