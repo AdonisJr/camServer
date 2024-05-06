@@ -39,15 +39,22 @@ router
     .route("/")
     .get(JWT.verifyAccessToken, (req, res) => {
         const id = req.query.id || "";
+        const filter = req.query.filter || "";
+        const credentials = [];
         try {
             let sql = "";
             if (id) {
                 sql = "SELECT * FROM user WHERE id = ?";
+                credentials.push(id)
             } else {
-                sql = "SELECT * FROM user WHERE role = 'user'";
+                sql = "SELECT * FROM user";
+            }
+            if(filter){
+                sql+=" WHERE id <> ?"
+                credentials.push(filter)
             }
 
-            db.query(sql, id, (err, rows) => {
+            db.query(sql, credentials, (err, rows) => {
                 if (err) {
                     console.log(`Server error controller/user/get: ${err}`);
                     return res.status(500).json({
